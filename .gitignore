@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Data (raw Kaggle dataset is ~230MB, exceeds GitHub's 100MB file limit --
+# only the small precomputed dataset in data/processed/ is tracked)
+backend/data/*
+!backend/data/.gitkeep
+!backend/data/processed/
+
+# Env
+.env
+backend/.env
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# OS
+.DS_Store

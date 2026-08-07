@@ -1,0 +1,79 @@
+body {
+  font-family: system-ui, sans-serif;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem;
+  color: #1a1a1a;
+}
+
+.search-bar {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.search-bar input {
+  width: 100%;
+  padding: 0.6rem;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+.suggestions {
+  position: absolute;
+  z-index: 10;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-top: none;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.suggestions li {
+  padding: 0.5rem 0.6rem;
+  cursor: pointer;
+}
+
+.suggestions li:hover {
+  background: #f0f0f0;
+}
+
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 1.25rem;
+}
+
+.result-card img,
+.poster-placeholder {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  background: #e5e5e5;
+  border-radius: 6px;
+}
+
+.result-card h3 {
+  font-size: 0.95rem;
+  margin: 0.5rem 0 0.2rem;
+}
+
+.result-card .genres {
+  font-size: 0.8rem;
+  color: #666;
+  margin: 0 0 0.3rem;
+}
+
+.result-card .reason {
+  font-size: 0.8rem;
+  color: #333;
+}
+
+.error {
+  color: #b00020;
+}
