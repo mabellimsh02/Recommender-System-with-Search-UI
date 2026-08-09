@@ -20,9 +20,10 @@ services:
       # These two are secrets -- "sync: false" means Render will prompt
       # you to type the value in its dashboard instead of storing it here
       # in the repo. TMDB_API_KEY: your key from themoviedb.org/settings/api.
-      # CORS_ORIGINS: set this AFTER deploying the frontend, to something
-      # like ["https://your-app.vercel.app"] (must be valid JSON).
+      # CORS_ORIGINS: comma-separated URLs, e.g.
+      # "http://localhost:5173,https://your-app.vercel.app" -- update this
+      # AFTER deploying the frontend, once you know its real URL.
       - key: TMDB_API_KEY
         sync: false
       - key: CORS_ORIGINS
-        sync: false
+        value: http://localhost:5173

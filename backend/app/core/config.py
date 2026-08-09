@@ -29,11 +29,25 @@ class Settings(BaseSettings):
     # Which frontend URLs are allowed to call this API from a browser.
     # Locally this is the Vite dev server; in production it should be set
     # (via the CORS_ORIGINS env var) to the deployed frontend's URL.
-    cors_origins: list[str] = ["http://localhost:5173"]
+    #
+    # Stored as a plain comma-separated string (e.g.
+    # "http://localhost:5173,https://your-app.vercel.app") rather than a
+    # list, because a list field here would require the env var to be
+    # strict JSON (e.g. '["http://localhost:5173"]') -- easy to type
+    # wrong in a dashboard text box (missing quotes/brackets), and it
+    # fails loudly at startup if you do. A comma-separated string is much
+    # harder to get wrong. See the cors_origins_list property below.
+    cors_origins: str = "http://localhost:5173"
 
     class Config:
         # When running locally, also read variables from this file.
         env_file = ".env"
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        """The parsed, whitespace-trimmed list of allowed origins --
+        what CORSMiddleware in app/main.py actually needs."""
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
 
 # A single shared instance, imported everywhere else in the app.
