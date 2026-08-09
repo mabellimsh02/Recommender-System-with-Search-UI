@@ -1,17 +1,27 @@
+# Deployment config for Render (render.com). When you create a new
+# "Blueprint" on Render and point it at this repo, Render reads this file
+# and sets up the backend service automatically -- no manual dashboard
+# clicking needed except for the two secrets marked "sync: false" below.
+
 services:
   - type: web
     name: recommender-backend
     runtime: python
-    plan: free
-    rootDir: backend
+    plan: free                    # Render's free tier (sleeps after 15 min idle)
+    rootDir: backend               # the FastAPI app lives in backend/, not the repo root
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
-    healthCheckPath: /api/health
+    healthCheckPath: /api/health   # Render pings this to confirm the app is alive
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.7
       - key: MOVIES_DATA_DIR
         value: data/processed
+      # These two are secrets -- "sync: false" means Render will prompt
+      # you to type the value in its dashboard instead of storing it here
+      # in the repo. TMDB_API_KEY: your key from themoviedb.org/settings/api.
+      # CORS_ORIGINS: set this AFTER deploying the frontend, to something
+      # like ["https://your-app.vercel.app"] (must be valid JSON).
       - key: TMDB_API_KEY
         sync: false
       - key: CORS_ORIGINS

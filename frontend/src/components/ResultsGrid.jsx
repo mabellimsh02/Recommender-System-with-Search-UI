@@ -1,5 +1,14 @@
+// Displays the list of recommended movies as a grid of cards, each with a
+// poster, title, genres, and a short reason it was recommended. Receives
+// the list as a `recommendations` prop from App.jsx -- this component
+// doesn't fetch anything itself, it just renders whatever it's given.
+
 import { useState } from "react";
 
+// A poster image that gracefully falls back to a "No poster" placeholder
+// if there's no URL, or if the image URL fails to actually load (e.g. a
+// broken/expired link) -- without this, a bad URL would show the
+// browser's default broken-image icon instead of something clean.
 function Poster({ src, alt }) {
   const [failed, setFailed] = useState(false);
 
@@ -10,6 +19,7 @@ function Poster({ src, alt }) {
 }
 
 export default function ResultsGrid({ recommendations }) {
+  // Nothing to show yet (e.g. before the user has searched for anything).
   if (!recommendations.length) return null;
 
   return (

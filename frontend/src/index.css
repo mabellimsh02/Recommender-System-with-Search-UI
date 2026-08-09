@@ -1,3 +1,11 @@
+/*
+ * All the app's styling in one file, organized to match the component
+ * tree: page-level styles, then SearchBar's input + dropdown, then
+ * ResultsGrid's card layout. Class names here (e.g. "search-bar",
+ * "result-card") are set via className in the .jsx files.
+ */
+
+/* Page-level layout: centered column, readable width, plain sans-serif. */
 body {
   font-family: system-ui, sans-serif;
   max-width: 960px;
@@ -6,6 +14,10 @@ body {
   color: #1a1a1a;
 }
 
+/* --- SearchBar --- */
+
+/* position: relative so the dropdown below can be positioned absolutely
+   right underneath this box. */
 .search-bar {
   position: relative;
   margin-bottom: 1.5rem;
@@ -15,12 +27,14 @@ body {
   width: 100%;
   padding: 0.6rem;
   font-size: 1rem;
-  box-sizing: border-box;
+  box-sizing: border-box; /* padding doesn't add to the declared width */
 }
 
+/* The autocomplete dropdown: floats directly under the input, scrolls if
+   there are more suggestions than fit. */
 .suggestions {
   position: absolute;
-  z-index: 10;
+  z-index: 10; /* sit above the rest of the page content */
   top: 100%;
   left: 0;
   right: 0;
@@ -29,7 +43,7 @@ body {
   list-style: none;
   background: #fff;
   border: 1px solid #ddd;
-  border-top: none;
+  border-top: none; /* flush against the input's own border */
   max-height: 280px;
   overflow-y: auto;
 }
@@ -43,12 +57,17 @@ body {
   background: #f0f0f0;
 }
 
+/* --- ResultsGrid --- */
+
+/* Responsive grid: as many 160px+ columns as fit the screen width. */
 .results-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 1.25rem;
 }
 
+/* Poster images and the "no poster" placeholder share the same box shape
+   (2:3 movie-poster aspect ratio) so the grid stays aligned either way. */
 .result-card img,
 .poster-placeholder {
   width: 100%;
@@ -74,6 +93,7 @@ body {
   color: #333;
 }
 
+/* Shown in App.jsx when a search/recommend request fails. */
 .error {
   color: #b00020;
 }

@@ -1,10 +1,14 @@
-fastapi==0.115.0
-uvicorn[standard]==0.30.6
-pandas==2.2.2
-numpy==1.26.4
-scikit-learn==1.5.1
-scipy==1.14.1
-implicit==0.7.2
-requests==2.32.3
-python-dotenv==1.0.1
-pydantic-settings==2.4.0
+# Python dependencies for the backend. Install with:
+#   pip install -r requirements.txt
+# (do this inside a virtual environment -- see README.md)
+
+fastapi==0.115.0          # the web framework that defines our API endpoints
+uvicorn[standard]==0.30.6 # the server that actually runs the FastAPI app
+pandas==2.2.2              # loading/manipulating the movie and ratings CSVs
+numpy==1.26.4               # numerical arrays, used under the hood by pandas/sklearn
+scikit-learn==1.5.1        # CountVectorizer + cosine similarity for content-based recommendations
+scipy==1.14.1                # sparse matrices, used to build the ratings matrix for ALS
+implicit==0.7.2              # the ALS collaborative-filtering model
+requests==2.32.3            # HTTP calls to the TMDb API (for poster images)
+python-dotenv==1.0.1        # loads backend/.env into environment variables locally
+pydantic-settings==2.4.0    # typed config loaded from env vars (see app/core/config.py)
