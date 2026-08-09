@@ -28,9 +28,11 @@ similar movies. Under the hood, "similar" is decided one of two ways:
    fans of one tend to like the other. It only works for movies with enough
    ratings in the data, though.
 
-The app picks whichever one fits the requested movie: collaborative
-filtering when there's enough rating data to trust it, content-based
-otherwise. See [Approach](#approach-content-based-vs-collaborative-filtering-vs-hybrid)
+When there's enough rating data to trust collaborative filtering at all,
+the app blends both: half the results come from each method (collaborative
+filtering picks listed first). For movies with too few ratings, it falls
+back to content-based alone, since that's the only one that works for
+every movie in the catalog. See [Approach](#approach-content-based-vs-collaborative-filtering-vs-hybrid)
 below for the full reasoning and evidence behind that choice.
 
 ## Tech stack
@@ -163,12 +165,26 @@ can't say anything about a movie with no ratings — a classic "cold start"
 problem. Content-based has no such gap, since it only needs a movie's own
 description.
 
-**Decision: a hybrid.** The app uses collaborative filtering when a movie
-has at least 5 ratings in the data (enough to trust the signal), and falls
-back to content-based similarity otherwise. Verified against the live API:
-searching *Toy Story* (well-rated) uses collaborative filtering; searching
-*Live-In Maid* (an obscure film with zero ratings in the dataset) correctly
-falls back to content-based.
+**Decision: a hybrid.** When a movie has at least 5 ratings in the data
+(enough to trust the signal), the app returns a blend — half the
+recommendations from collaborative filtering, half from content-based,
+grouped and deduplicated (if a movie is a strong match by both methods, it's
+credited to whichever ranked it higher, and the other method's list
+backfills from further down its own ranking to still hit the full count).
+Movies with too few ratings fall back to content-based alone. Verified
+against the live API: searching *Toy Story* (well-rated) returns 5
+collaborative-filtering picks (Star Wars, Forrest Gump, Jurassic Park...)
+followed by 5 content-based picks (Tin Toy, Toy Story 2, and other
+John Lasseter films); *Live-In Maid* (an obscure film with zero ratings)
+correctly returns all content-based.
+
+**A bug this surfaced**: several titles appear more than once in the raw
+dataset as genuinely different movies (three separate films are all called
+*Titanic*, e.g. the 1997 one and a 1953 one). The original title lookup
+crashed with a 500 error on any of these, since it expected exactly one
+match. Fixed by sorting movies by popularity first and keeping only the
+most popular match per title — searching "Titanic" now reliably resolves to
+the famous 1997 James Cameron film.
 
 **Posters**: the dataset's built-in poster links are stale — I checked 5 of
 them and all 5 returned a "not found" error. TMDb's poster images get

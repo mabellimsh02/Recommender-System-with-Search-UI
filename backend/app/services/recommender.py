@@ -18,9 +18,11 @@ requested movie best:
    no genres, but the same people tend to like both) -- but it only works
    for movies that have enough ratings in the data.
 
-`recommend()` below is the hybrid: it uses collaborative filtering when the
-movie has enough ratings to trust that signal, and falls back to
-content-based similarity otherwise. See
+`recommend()` below is the hybrid: when a movie has enough ratings to trust
+collaborative filtering at all, it returns a mix of both methods (half the
+results from each, collaborative filtering picks listed first); when there
+aren't enough ratings for CF to say anything useful, it falls back to
+content-based alone, which works for any movie in the catalog. See
 backend/notebooks/01_explore_and_compare.ipynb section 4 for the side-by-side
 comparison this design decision is based on.
 
@@ -81,7 +83,18 @@ class Recommender:
         self.movies = movies
         # Fast "title -> row" and "TMDb id -> row" lookups, used everywhere
         # below instead of scanning the whole table each time.
-        self.title_to_idx = pd.Series(movies.index, index=movies["title"].str.lower()).drop_duplicates()
+        #
+        # Several titles appear more than once in this dataset (e.g. three
+        # different movies are all literally called "Titanic") -- if we
+        # built this lookup naively, searching one of those titles would
+        # match multiple rows and crash everything downstream that expects
+        # a single movie. So: sort by popularity first, then keep only the
+        # *first* (i.e. most popular) row for each title -- searching
+        # "Titanic" gets you the famous 1997 one, not an obscure other film
+        # that happens to share the name.
+        by_popularity = movies.sort_values("vote_count", ascending=False)
+        title_to_idx = pd.Series(by_popularity.index, index=by_popularity["title"].str.lower())
+        self.title_to_idx = title_to_idx[~title_to_idx.index.duplicated(keep="first")]
         self.id_to_idx = pd.Series(movies.index, index=movies["id"]).drop_duplicates()
 
         # --- Content-based model ---
@@ -179,7 +192,8 @@ class Recommender:
 
     def recommend(self, title: str, n: int = 10) -> tuple[str, list[Recommendation]]:
         """The main entry point: given an exact movie title, return which
-        method was used and up to `n` ranked recommendations.
+        method (or mix of methods) was used and up to `n` ranked
+        recommendations.
 
         Raises ValueError if the title isn't found (routes.py turns that
         into an HTTP 404)."""
@@ -189,24 +203,71 @@ class Recommender:
 
         query_row = self.movies.loc[idx]
         tmdb_id = int(query_row["id"])
-        # The hybrid decision: only trust collaborative filtering if this
-        # movie has enough ratings behind it (see CF_MIN_RATINGS above).
+        # The hybrid decision: only trust collaborative filtering at all if
+        # this movie has enough ratings behind it (see CF_MIN_RATINGS above).
         has_cf_coverage = (
             tmdb_id in self.tmdb_id_to_inner
             and self.rating_counts.get(tmdb_id, 0) >= CF_MIN_RATINGS
         )
 
-        if has_cf_coverage:
-            method = "collaborative filtering"
-            indices = self._collaborative_indices(tmdb_id, n)
-        else:
-            method = "content-based"
+        if not has_cf_coverage:
+            # No trustworthy rating signal for this movie -- content-based
+            # is the only option, since it only needs the movie's own
+            # genre/cast/crew metadata, not ratings from other users.
             indices = self._content_based_indices(idx, n)
+            recommendations = [
+                self._build_recommendation(i, query_row, "content-based") for i in indices
+            ]
+            return "content-based", recommendations
 
-        recommendations = [
-            self._build_recommendation(i, query_row, method) for i in indices
-        ]
-        return method, recommendations
+        # Blended hybrid: half the results from collaborative filtering,
+        # half from content-based, CF picks listed first. We ask each
+        # method for more candidates than we need (a "buffer") so that if
+        # the same movie shows up highly ranked by both methods, we can
+        # give it to whichever method ranked it better and still have
+        # enough leftover candidates to fill that method's quota.
+        half = n // 2
+        other_half = n - half  # content-based gets the extra slot if n is odd
+        buffer = n
+        cf_candidates = self._collaborative_indices(tmdb_id, half + buffer)
+        content_candidates = self._content_based_indices(idx, other_half + buffer)
+
+        # Where does each candidate movie rank within its own method's
+        # list? (Lower number = stronger match by that method.)
+        cf_rank = {movie_idx: rank for rank, movie_idx in enumerate(cf_candidates)}
+        content_rank = {movie_idx: rank for rank, movie_idx in enumerate(content_candidates)}
+
+        def better_method(movie_idx: int) -> str:
+            """If a movie was suggested by both methods, credit it to
+            whichever one ranked it higher."""
+            in_cf, in_content = movie_idx in cf_rank, movie_idx in content_rank
+            if in_cf and in_content:
+                return "cf" if cf_rank[movie_idx] <= content_rank[movie_idx] else "content"
+            return "cf" if in_cf else "content"
+
+        # Walk each method's own ranked list in order, keeping only the
+        # movies that method "won", until each side's quota is filled --
+        # this is the backfill: a movie lost to the other method just gets
+        # skipped, and the next-best movie *from the same list* takes its place.
+        cf_picks = [i for i in cf_candidates if better_method(i) == "cf"][:half]
+        content_picks = [i for i in content_candidates if better_method(i) == "content"][:other_half]
+
+        # Extremely rare fallback: if the buffer wasn't big enough to fill
+        # both quotas (heavy overlap between the two methods), top up from
+        # whatever candidates are still unused.
+        used = set(cf_picks) | set(content_picks)
+        leftover = [i for i in cf_candidates + content_candidates if i not in used]
+        while len(cf_picks) + len(content_picks) < n and leftover:
+            if len(cf_picks) < half:
+                cf_picks.append(leftover.pop(0))
+            else:
+                content_picks.append(leftover.pop(0))
+
+        recommendations = (
+            [self._build_recommendation(i, query_row, "collaborative filtering") for i in cf_picks]
+            + [self._build_recommendation(i, query_row, "content-based") for i in content_picks]
+        )
+        return "hybrid", recommendations
 
     def _build_recommendation(self, idx: int, query_row: pd.Series, method: str) -> Recommendation:
         """Turn one similar-movie row into a full Recommendation, including
