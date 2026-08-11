@@ -57,6 +57,19 @@ body {
   background: #f0f0f0;
 }
 
+/* The "Searching..." row shown while a request is in flight (e.g. during
+   a slow backend cold-start) -- not clickable, so it shouldn't look like
+   the other rows. */
+.suggestions li.suggestions-status {
+  cursor: default;
+  color: #888;
+  font-style: italic;
+}
+
+.suggestions li.suggestions-status:hover {
+  background: none;
+}
+
 /* --- ResultsGrid --- */
 
 /* Responsive grid: as many 160px+ columns as fit the screen width. */

@@ -10,6 +10,7 @@ export default function SearchBar({ onSelect }) {
   const [query, setQuery] = useState("");           // current text in the input
   const [suggestions, setSuggestions] = useState([]); // matching movies from the API
   const [open, setOpen] = useState(false);            // whether the dropdown is visible
+  const [loading, setLoading] = useState(false);      // whether a search request is in flight
   const debounceRef = useRef(null);                   // holds the pending debounce timer
 
   // Re-runs every time `query` changes. We don't want to hit the API on
@@ -21,18 +22,28 @@ export default function SearchBar({ onSelect }) {
     if (!query.trim()) {
       setSuggestions([]);
       setOpen(false);
+      setLoading(false);
       return;
     }
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
+      // The backend (Render free tier) sleeps after 15 minutes idle, so
+      // the very first search after a quiet period can take up to a
+      // minute to respond. Without this, the dropdown would just stay
+      // empty with no explanation, which looks exactly like the app is
+      // broken -- so we show "Searching..." for as long as the request
+      // is in flight, however long that turns out to be.
+      setLoading(true);
+      setOpen(true);
       try {
         const data = await searchTitles(query);
         setSuggestions(data.results);
-        setOpen(data.results.length > 0);
       } catch {
         // A failed search just means no suggestions -- not worth showing
         // an error for something as minor as autocomplete not loading.
         setSuggestions([]);
+      } finally {
+        setLoading(false);
       }
     }, 250);
     // Cleanup: if this effect re-runs (query changed again) or the
@@ -47,6 +58,8 @@ export default function SearchBar({ onSelect }) {
     onSelect(movie.title);
   }
 
+  const showDropdown = open && (loading || suggestions.length > 0);
+
   return (
     <div className="search-bar">
       <input
@@ -54,20 +67,24 @@ export default function SearchBar({ onSelect }) {
         placeholder="Search for a movie you like..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        onFocus={() => suggestions.length > 0 && setOpen(true)}
+        onFocus={() => (suggestions.length > 0 || loading) && setOpen(true)}
         // A plain onBlur would close the dropdown before the click on a
         // suggestion below it gets a chance to register, so we delay it
         // slightly. The suggestions themselves use onMouseDown (fires
         // before blur) rather than onClick to select reliably.
         onBlur={() => setTimeout(() => setOpen(false), 150)}
       />
-      {open && (
+      {showDropdown && (
         <ul className="suggestions">
-          {suggestions.map((movie) => (
-            <li key={movie.movie_id} onMouseDown={() => handleSelect(movie)}>
-              {movie.title} {movie.year ? `(${movie.year})` : ""}
-            </li>
-          ))}
+          {loading ? (
+            <li className="suggestions-status">Searching...</li>
+          ) : (
+            suggestions.map((movie) => (
+              <li key={movie.movie_id} onMouseDown={() => handleSelect(movie)}>
+                {movie.title} {movie.year ? `(${movie.year})` : ""}
+              </li>
+            ))
+          )}
         </ul>
       )}
     </div>

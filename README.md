@@ -9,8 +9,10 @@ Maid" or "Liked by people who also liked Toy Story").
 **⚙️ API**: https://recommender-backend-5trx.onrender.com/docs
 
 > Note: the backend is on Render's free tier, which sleeps after 15 minutes
-> with no traffic. If the app feels slow to respond to your first search,
-> that's the server waking back up (~30-60s) — normal, not a bug.
+> with no traffic. Your first search after a quiet period may take up to a
+> minute while the server wakes back up — the search box shows
+> "Searching..." the whole time, so it's not stuck, just slow. Normal, not
+> a bug.
 
 ## What it does and how
 
@@ -212,6 +214,14 @@ environment variable — easy to mistype in a plain dashboard text box, and
 it crashed the whole app at startup when the JSON didn't parse. Switched it
 to a plain comma-separated string instead (see `app/core/config.py`), which
 is much harder to get wrong.
+
+A second one, found after deploying: the free-tier cold start (see the note
+at the top) made the app *look* broken even though it wasn't — the search
+box gave zero visual feedback while a request was pending, so a slow
+wake-up just looked like nothing was happening. Confirmed with a live
+browser test against a deliberately delayed response before fixing it:
+`SearchBar.jsx` now shows a "Searching..." row in the dropdown for as long
+as a request is in flight.
 
 ## Status
 
