@@ -58,6 +58,8 @@ export default function SearchBar({ onSelect }) {
     onSelect(movie.title);
   }
 
+  // Show the dropdown while a search is in progress (so "Searching..."
+  // has somewhere to render) or once there are real suggestions to show.
   const showDropdown = open && (loading || suggestions.length > 0);
 
   return (
